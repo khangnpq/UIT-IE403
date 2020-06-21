@@ -139,7 +139,7 @@ class Logistic_Regression:
 			print("WITH STOPWORD")
 		if type(ngram_range) == list:
 			print("\nRESULT FOR UNIGRAM CountVectorizer")
-			feature_result_ug = self.nfeature_accuracy_checker(vectorizer=cvec, n_features=np.arange(1200,3500,100), stop_words=stop_words, min_df=min_df)
+			feature_result_ug = self.nfeature_accuracy_checker(vectorizer=cvec, n_features=np.arange(1200,4000,100), stop_words=stop_words, min_df=min_df)
 			print("\nRESULT FOR BIGRAM CountVectorizer")
 			feature_result_bg = self.nfeature_accuracy_checker(vectorizer=cvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, 2), min_df=min_df)
 			print("\nRESULT FOR TRIGRAM CountVectorizer")
@@ -179,7 +179,7 @@ class Logistic_Regression:
 			print("WITH STOPWORD")
 		if type(ngram_range) == list:
 			print("RESULT FOR UNIGRAM TfidfVectorizer")
-			feature_result_ugt = self.nfeature_accuracy_checker(vectorizer=tvec, n_features=np.arange(1200,3500,100), stop_words=stop_words, min_df=min_df)
+			feature_result_ugt = self.nfeature_accuracy_checker(vectorizer=tvec, n_features=np.arange(1200,4000,100), stop_words=stop_words, min_df=min_df)
 			print("\nRESULT FOR BIGRAM TfidfVectorizer")
 			feature_result_bgt = self.nfeature_accuracy_checker(vectorizer=tvec, n_features=n_features, stop_words=stop_words, ngram_range=(1, 2), min_df=min_df)
 			print("\nRESULT FOR TRIGRAM TfidfVectorizer")
