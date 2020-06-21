@@ -29,9 +29,9 @@ def ChangeWord(sentence, the_list, rule_dict):
 		if change:
 			new_sentence = " ".join(word_list)
 			
-	new_sentence = re.sub('([:.,!?()])', r' \1 ', new_sentence) #Add space between punctuation such as ([:.,!?()])
+	new_sentence = re.sub('([:.,!?()_])', r' \1 ', new_sentence) #Add space between punctuation such as ([:.,!?()])
 	new_sentence = re.sub('\s{2,}', ' ', new_sentence) #Remove extra space
-	new_sentence = ' '.join([w for w in new_sentence.split() if len(w)>1 and w not in remove_list]) #Remove single character on the string
+	new_sentence = ' '.join([w for w in new_sentence.split() if len(w)>=1 and w not in remove_list]) #Remove single character on the string
 	
 	return new_sentence
 	

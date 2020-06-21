@@ -90,7 +90,7 @@ class Logistic_Regression:
 				self.accuracy.append(accuracy_dict)
 		train_valid_time = time() - t0
 		
-		return train_valid_time
+		return weighted_f1_score_test, train_valid_time
 		
 	def nfeature_accuracy_checker(self, vectorizer=cvec, n_features=n_features, stop_words=None, ngram_range=(1, 1), classifier=lr, min_df=1):
 		result = []
@@ -104,14 +104,14 @@ class Logistic_Regression:
 				('vectorizer', vectorizer),
 				('classifier', classifier)
 			])
-			tt_time = self.accuracy_summary(checker_pipeline, n_features)
+			weighted_f1_score_test, tt_time = self.accuracy_summary(checker_pipeline, n_features)
 			
 			print("Validation result for {} features".format(n_features))
 			print("Accuracy score on valid set: {0:.2f}%".format(self.accuracy[0]['valid']*100))
 			print("Weighted F1-score on valid set: {0:.2f}%".format(self.weighted_f1_score_valid*100))
 			print("Accuracy score on test set:: {0:.2f}%".format(self.accuracy[0]['test']*100))
 			print("Weighted F1-score on test set: {0:.2f}%".format(self.weighted_f1_score_test*100))
-			result.append((n_features,self.weighted_f1_score_test,tt_time))
+			result.append((n_features, weighted_f1_score_test,tt_time))
 		else:
 			for n in n_features:
 				vectorizer.set_params(min_df=min_df, stop_words=stop_words, max_features=n, ngram_range=ngram_range)
@@ -119,8 +119,8 @@ class Logistic_Regression:
 					('vectorizer', vectorizer),
 					('classifier', classifier)
 				])
-				tt_time = self.accuracy_summary(checker_pipeline, n)
-				result.append((n,self.weighted_f1_score_test,tt_time))
+				weighted_f1_score_test, tt_time = self.accuracy_summary(checker_pipeline, n)
+				result.append((n, weighted_f1_score_test,tt_time))
 			print("Highest weighted f1-score on valid set: {0:.2f}%".format(self.weighted_f1_score_valid*100))
 			print("Highest weighted f1-score on test set with that model: {0:.2f}%".format(self.weighted_f1_score_test*100))
 			for accuracy_dict in self.accuracy:
@@ -130,7 +130,7 @@ class Logistic_Regression:
 				
 		return result
 		
-	def UseCountVectorizer(self, n_features = np.arange(1200,6100,100), ngram_range = [1,2,3], use_stop_words = True, min_df=1):
+	def UseCountVectorizer(self, n_features = np.arange(1200,7100,100), ngram_range = [1,2,3], use_stop_words = True, min_df=1):
 		if not use_stop_words:
 			stop_words=get_stop_words('..\data\stopwords.txt')
 			print("WITHOUT STOPWORD")
@@ -139,7 +139,7 @@ class Logistic_Regression:
 			print("WITH STOPWORD")
 		if type(ngram_range) == list:
 			print("\nRESULT FOR UNIGRAM CountVectorizer")
-			feature_result_ug = self.nfeature_accuracy_checker(vectorizer=cvec, n_features=n_features, stop_words=stop_words, min_df=min_df)
+			feature_result_ug = self.nfeature_accuracy_checker(vectorizer=cvec, n_features=np.arange(1200,3500,100), stop_words=stop_words, min_df=min_df)
 			print("\nRESULT FOR BIGRAM CountVectorizer")
 			feature_result_bg = self.nfeature_accuracy_checker(vectorizer=cvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, 2), min_df=min_df)
 			print("\nRESULT FOR TRIGRAM CountVectorizer")
@@ -169,7 +169,7 @@ class Logistic_Regression:
 			plt.legend()
 			plt.show(block=True)
 		
-	def UseTFIDFVectorizer(self,n_features=np.arange(100,5000,100), ngram_range = [1,2,3], use_stop_words = True, min_df=1):
+	def UseTFIDFVectorizer(self,n_features=np.arange(1200,7100,100), ngram_range = [1,2,3], use_stop_words = True, min_df=1):
 		
 		if not use_stop_words:
 			stop_words=get_stop_words('..\data\stopwords.txt')
@@ -179,7 +179,7 @@ class Logistic_Regression:
 			print("WITH STOPWORD")
 		if type(ngram_range) == list:
 			print("RESULT FOR UNIGRAM TfidfVectorizer")
-			feature_result_ugt = self.nfeature_accuracy_checker(vectorizer=tvec, n_features=n_features, stop_words=stop_words, min_df=min_df)
+			feature_result_ugt = self.nfeature_accuracy_checker(vectorizer=tvec, n_features=np.arange(1200,3500,100), stop_words=stop_words, min_df=min_df)
 			print("\nRESULT FOR BIGRAM TfidfVectorizer")
 			feature_result_bgt = self.nfeature_accuracy_checker(vectorizer=tvec, n_features=n_features, stop_words=stop_words, ngram_range=(1, 2), min_df=min_df)
 			print("\nRESULT FOR TRIGRAM TfidfVectorizer")
