@@ -40,13 +40,15 @@ def ReduceEmoji(*args, keep_repeated_emoji = False):
 	#args = list(args)
 		
 	output = []
-		
+	e_to_v_df = pd.read_excel("../data/Emoji_list_emo_3.xlsx", encoding="ISO-8859-1")	
+	e_v_dict = dict(zip(e_to_v_df.Emojize, e_to_v_df.Translated))
+	file_path = '../data/emoticon-emoji.xlsx'
+	rule_dict = LoadRuleDict(file_path)
+	to_remove = "_.,-!?:()[]{}aeiouchmlprwyz<3"
+	remove_list = '(")[]#/\~;*@+=<>'
+	remove_list_1 = """([:.`~,-_`́ '"()])""" 
 	for df in args:
 		sentence_list = []
-		file_path = '../data/emoticon-emoji.xlsx'
-		rule_dict = LoadRuleDict(file_path)
-		to_remove = "_.,-!?:()[]{}aeiouchmlprwyz<3"
-		remove_list = '(")[]#/\~;*@+=<>'
 		
 		for text in df.Sentence:
 		
@@ -71,8 +73,18 @@ def ReduceEmoji(*args, keep_repeated_emoji = False):
 			if not keep_repeated_emoji:
 				data = RemoveRepeatedEmoji(data)
 			new_text = emoji.demojize("".join(data)) #text string that has removed duplicate emoji
-			final_text = "".join(new_text[i] if new_text[i] not in remove_list else '' for i in range(len(new_text)))
-			sentence_list.append(final_text)
+			sentence = "".join(new_text[i] if new_text[i] not in remove_list else '' for i in range(len(new_text)))
+			sentence = re.sub('([:.,!?()])', r' \1 ', sentence) #Add space between punctuation such as ([:.,!?()])
+			sentence = re.sub('\s{2,}', ' ', sentence) #Remove extra space
+			word_list_1 = []
+			for word in sentence.split(" "): #Change english emoji word to vietnamese.
+				if word in e_v_dict.keys():
+					word = e_v_dict[word]
+				word_list_1.append(word)
+			sentence = ' '.join(word_list_1)
+			new_sentence = ' '.join([w for w in sentence.split() if len(w)>=1 and w not in remove_list_1]) #Remove single character on the string
+			#print(new_sentence)
+			sentence_list.append(new_sentence)
 		new_df = df.copy()
 		new_df.Sentence = sentence_list	#replace Sentence column
 		output.append(new_df)

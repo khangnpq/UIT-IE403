@@ -10,10 +10,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import load_data
 import numpy as np
+import pickle
 
 plt.style.use('ggplot')
 le = preprocessing.LabelEncoder()
-tokenizer = Tokenizer(num_words=3500)
 
 def EncodeLabel(*args):
 	
@@ -94,8 +94,11 @@ class Convolutional_NN:
 		self.maxlen = max(length)
 
 	def Tokenization(self):
-	
+		
+		tokenizer = Tokenizer(num_words=3500)
 		tokenizer.fit_on_texts(self.x_train)
+		with open('../output/tokenizer.pickle', 'wb') as handle:
+			pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
 		x_train = tokenizer.texts_to_sequences(self.x_train)
 		self.x_train_pad = pad_sequences(x_train, padding='post', maxlen=self.maxlen)
 		x_valid = tokenizer.texts_to_sequences(self.x_valid)
@@ -156,12 +159,15 @@ def UseConvolutionalNN(*args):
 	print("f1-score: {:.2f}%".format(weighted_f1_score*100))
 
 def TestCase(df):
-	
+
+	with open('../output/tokenizer.pickle', 'rb') as handle:
+		tokenizer = pickle.load(handle)
+	cnn_model = load_model('../output/cnn_model.h1')
 	x_test_CNN = df.Sentence
 	x_test_token = tokenizer.texts_to_sequences(x_test_CNN)
 	x_test_pad = pad_sequences(x_test_token, padding='post', maxlen=134)
 	y_test_CNN = df.Emotion
-	cnn_model = load_model('../output/cnn_model.h1')
+	
 	#test_loss, test_accuracy = cnn_model.evaluate(x_test, y_test, verbose=False)
 	y_pred = cnn_model.predict_classes(x_test_pad)
 	#weighted_f1_score = f1_score(y_test, y_pred, average="weighted")
