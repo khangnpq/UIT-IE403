@@ -15,6 +15,7 @@ import pickle
 from sklearn import preprocessing
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, classification_report, confusion_matrix
 from sklearn.metrics import plot_confusion_matrix
+from copy import deepcopy
 
 plt.style.use('fivethirtyeight')
 
@@ -22,10 +23,10 @@ plt.style.use('fivethirtyeight')
 #train_dir = os.path.join(data_dir, "train_nor_811" + "." + "xlsx")
 #test_dir = os.path.join(data_dir, "test_nor_811" + "." + "xlsx")
 #valid_dir = os.path.join(data_dir, "valid_nor_811" + "." + "xlsx")
-n_features = np.arange(100,5000,100)
+n_features = np.arange(1200,6100,100)
 cvec = CountVectorizer()
 tvec = TfidfVectorizer()
-lr = LogisticRegression(multi_class='multinomial', solver='newton-cg',max_iter= 250)
+lr = LogisticRegression(C=10,multi_class='multinomial', solver='newton-cg',max_iter= 250, class_weight= "balanced")
 le = preprocessing.LabelEncoder()
 
 def get_stop_words(stop_file_path):
@@ -50,78 +51,85 @@ class Logistic_Regression:
 		self.y_train = y_train
 		self.y_valid = y_valid
 		self.y_test = y_test
-		self.accuracy_valid = 0
-		self.accuracy_test = 0
-		self.weighted_f1_score = []
+		self.accuracy_valid = []
+		self.accuracy_test = []
 		self.model = []
-		
+		self.best_model=[]
+		self.accuracy = []
 	def accuracy_summary(self, pipeline, n_features):
 		
+		accuracy_dict = {}
 		t0 = time()
-		sentiment_fit = pipeline.fit(self.x_train, self.y_train)
-		y_pred = sentiment_fit.predict(self.x_valid)
-		accuracy = accuracy_score(self.y_valid, y_pred)
-		y_pred_test = sentiment_fit.predict(self.x_test)
-		accuracy_test = accuracy_score(self.y_test, y_pred_test)
-		weighted_f1_score = f1_score(self.y_test, y_pred_test, average="weighted")
-		if accuracy > self.accuracy_valid:
-			self.accuracy_valid = accuracy
+		
+		sentiment_fit = pipeline.fit(self.x_train, self.y_train) #Train model
+		y_pred_valid = sentiment_fit.predict(self.x_valid) #Predict on valid set	
+		accuracy_valid = accuracy_score(self.y_valid, y_pred_valid) #Accuracy on valid set
+		weighted_f1_score_valid = f1_score(self.y_valid, y_pred_valid, average="weighted") #Weighted f1-score on valid set 
+		y_pred_test = sentiment_fit.predict(self.x_test) #Predict on test set
+		accuracy_test = accuracy_score(self.y_test, y_pred_test) #Accuracy on test set
+		weighted_f1_score_test = f1_score(self.y_test, y_pred_test, average="weighted") #Weighted f1-score on test set
+		accuracy_dict['valid'] = accuracy_valid
+		accuracy_dict['test'] = accuracy_test
+		accuracy_dict['n_features'] = n_features
+		if weighted_f1_score_valid > self.weighted_f1_score_valid:
 			self.model.clear()
-			self.weighted_f1_score.clear()
-			self.model.append(sentiment_fit)
-			self.accuracy_test = accuracy_test
-			self.weighted_f1_score.append((n_features, weighted_f1_score))
-		elif accuracy == self.accuracy_valid:
-			if accuracy_test > self.accuracy_test:
+			self.accuracy.clear()
+			self.model.append(deepcopy(sentiment_fit))
+			self.accuracy.append(accuracy_dict)
+			self.weighted_f1_score_valid = weighted_f1_score_valid
+			self.weighted_f1_score_test = weighted_f1_score_test
+		elif weighted_f1_score_valid == self.weighted_f1_score_valid:
+			if weighted_f1_score_test > self.weighted_f1_score_test:
 				self.model.clear()
-				self.weighted_f1_score.clear()
-				self.model.append(sentiment_fit)
-				self.accuracy_test = accuracy_test
-				self.weighted_f1_score.append((n_features, weighted_f1_score))
-			elif accuracy_test == self.accuracy_test:
-				self.model.append(sentiment_fit)
-				self.weighted_f1_score.append((n_features, weighted_f1_score))
+				self.accuracy.clear()			
+				self.model.append(deepcopy(sentiment_fit))
+				self.accuracy.append(accuracy_dict)
+				self.weighted_f1_score_test = weighted_f1_score_test
+			elif weighted_f1_score_test == self.weighted_f1_score_test:
+				self.model.append(deepcopy(sentiment_fit))
+				self.accuracy.append(accuracy_dict)
 		train_valid_time = time() - t0
+		return weighted_f1_score_test, train_valid_time
 		
-		return accuracy, train_valid_time
-		
-	def nfeature_accuracy_checker(self, vectorizer=cvec, n_features=n_features, stop_words=None, ngram_range=(1, 1), classifier=lr):
-		result = []
-		self.accuracy_valid = 0
-		self.accuracy_test = 0
+	def nfeature_accuracy_checker(self, vectorizer=cvec, n_features=n_features, stop_words=None, ngram_range=(1, 1), classifier=lr, min_df=1):
+		result = []	
 		self.model.clear()
-		self.weighted_f1_score.clear()
+		self.accuracy.clear()
+		self.weighted_f1_score_valid = 0
+		self.weighted_f1_score_test = 0
 		if isinstance(n_features, (int, float, complex)) and not isinstance(n_features, bool):
-			vectorizer.set_params(min_df = 2, stop_words=stop_words, max_features=n_features, ngram_range=ngram_range)
+			vectorizer.set_params(min_df=min_df, stop_words=stop_words, max_features=n_features, ngram_range=ngram_range)
 			checker_pipeline = Pipeline([
 				('vectorizer', vectorizer),
 				('classifier', classifier)
 			])
-			nfeature_accuracy,tt_time = self.accuracy_summary(checker_pipeline, n_features)
+			weighted_f1_score_test, tt_time = self.accuracy_summary(checker_pipeline, n_features)
 			
 			print("Validation result for {} features".format(n_features))
-			print("accuracy_valid score: {0:.2f}%".format(self.accuracy_valid*100))
-			print("accuracy_test score: {0:.2f}%".format(self.accuracy_test*100))
-			print("f1_score: {0:.2f}%".format(self.weighted_f1_score[0][1]*100))
-			result.append((n_features,nfeature_accuracy,tt_time))
+			print("Accuracy score on valid set: {0:.2f}%".format(self.accuracy[0]['valid']*100))
+			print("Weighted F1-score on valid set: {0:.2f}%".format(self.weighted_f1_score_valid*100))
+			print("Accuracy score on test set:: {0:.2f}%".format(self.accuracy[0]['test']*100))
+			print("Weighted F1-score on test set: {0:.2f}%".format(self.weighted_f1_score_test*100))
+			result.append((n_features, weighted_f1_score_test,tt_time))
 		else:
 			for n in n_features:
-				vectorizer.set_params(min_df = 2, stop_words=stop_words, max_features=n, ngram_range=ngram_range)
+				vectorizer.set_params(min_df=min_df, stop_words=stop_words, max_features=n, ngram_range=ngram_range)
 				checker_pipeline = Pipeline([
 					('vectorizer', vectorizer),
 					('classifier', classifier)
 				])
-				nfeature_accuracy,tt_time = self.accuracy_summary(checker_pipeline, n)
-				result.append((n,nfeature_accuracy,tt_time))
-			print("Max accuracy score on valid set: {0:.2f}%".format(self.accuracy_valid*100))
-			print("Max accuracy score on test set: {0:.2f}%".format(self.accuracy_test*100))
-			for n_feat, weighted_f1_score in self.weighted_f1_score:
-				print("Validation result for {} features".format(n_feat))
-				print("f1_score: {0:.2f}%".format(weighted_f1_score*100))
-				
+				weighted_f1_score_test, tt_time = self.accuracy_summary(checker_pipeline, n)
+				result.append((n, weighted_f1_score_test,tt_time))
+			print("Highest weighted f1-score on valid set: {0:.2f}%".format(self.weighted_f1_score_valid*100))
+			print("Highest weighted f1-score on test set with that model: {0:.2f}%".format(self.weighted_f1_score_test*100))
+			for accuracy_dict in self.accuracy:
+				print("Validation result for {} features".format(accuracy_dict['n_features']))
+				print("Accuracy score on valid set: {0:.2f}%".format(accuracy_dict['valid']*100))
+				print("Accuracy score on test set: {0:.2f}%".format(accuracy_dict['test']*100))
+			self.best_model.append(self.model.copy())
 		return result
 		
-	def UseCountVectorizer(self, n_features = np.arange(100,5000,100), ngram_range = [1,2,3], use_stop_words = True):
+	def UseCountVectorizer(self, n_features = np.arange(1200,7100,100), ngram_range = [1,2,3], use_stop_words = True, min_df=1):
 		if not use_stop_words:
 			stop_words=get_stop_words('..\data\stopwords.txt')
 			print("WITHOUT STOPWORD")
@@ -130,37 +138,37 @@ class Logistic_Regression:
 			print("WITH STOPWORD")
 		if type(ngram_range) == list:
 			print("\nRESULT FOR UNIGRAM CountVectorizer")
-			feature_result_ug = self.nfeature_accuracy_checker(vectorizer=cvec, n_features=n_features, stop_words=stop_words)
+			feature_result_ug = self.nfeature_accuracy_checker(vectorizer=cvec, n_features=n_features, stop_words=stop_words, min_df=min_df)
 			print("\nRESULT FOR BIGRAM CountVectorizer")
-			feature_result_bg = self.nfeature_accuracy_checker(vectorizer=cvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, 2))
+			feature_result_bg = self.nfeature_accuracy_checker(vectorizer=cvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, 2), min_df=min_df)
 			print("\nRESULT FOR TRIGRAM CountVectorizer")
-			feature_result_tg = self.nfeature_accuracy_checker(vectorizer=cvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, 3))
-			nfeatures_plot_tg = pd.DataFrame(feature_result_tg,columns=['nfeatures','validation_accuracy','train_test_time'])
-			nfeatures_plot_bg = pd.DataFrame(feature_result_bg,columns=['nfeatures','validation_accuracy','train_test_time'])
-			nfeatures_plot_ug = pd.DataFrame(feature_result_ug,columns=['nfeatures','validation_accuracy','train_test_time'])
+			feature_result_tg = self.nfeature_accuracy_checker(vectorizer=cvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, 3), min_df=min_df)
+			nfeatures_plot_tg = pd.DataFrame(feature_result_tg,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
+			nfeatures_plot_bg = pd.DataFrame(feature_result_bg,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
+			nfeatures_plot_ug = pd.DataFrame(feature_result_ug,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
 
 			plt.figure(figsize=(8,6))
-			plt.plot(nfeatures_plot_tg.nfeatures, nfeatures_plot_tg.validation_accuracy,label='trigram count vectorizer',linestyle=':', color='royalblue')
-			plt.plot(nfeatures_plot_bg.nfeatures, nfeatures_plot_bg.validation_accuracy,label='bigram count vectorizer',linestyle=':',color='orangered')
-			plt.plot(nfeatures_plot_ug.nfeatures, nfeatures_plot_ug.validation_accuracy, label='unigram count vectorizer',linestyle=':',color='gold')
-			plt.title("N-gram(1~3) CountVectorizer test result : Accuracy")
+			plt.plot(nfeatures_plot_tg.nfeatures, nfeatures_plot_tg.Weighted_F1_Score,label='trigram count vectorizer',linestyle=':', color='royalblue')
+			plt.plot(nfeatures_plot_bg.nfeatures, nfeatures_plot_bg.Weighted_F1_Score,label='bigram count vectorizer',linestyle=':',color='orangered')
+			plt.plot(nfeatures_plot_ug.nfeatures, nfeatures_plot_ug.Weighted_F1_Score, label='unigram count vectorizer',linestyle=':',color='gold')
+			plt.title("N-gram(1~3) CountVectorizer test result : Weighted F1 Score")
 			plt.xlabel("Number of features")
-			plt.ylabel("Validation set accuracy")
+			plt.ylabel("Weighted F1-score")
 			plt.legend()
 			plt.show(block=True)
 		else:
 			print("\nRESULT FOR {} GRAM CountVectorizer".format(ngram_range))
-			feature_result = self.nfeature_accuracy_checker(vectorizer=cvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, ngram_range))
-			nfeatures_plot = pd.DataFrame(feature_result,columns=['nfeatures','validation_accuracy','train_test_time'])
+			feature_result = self.nfeature_accuracy_checker(vectorizer=cvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, ngram_range), min_df=min_df)
+			nfeatures_plot = pd.DataFrame(feature_result,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
 			plt.figure(figsize=(8,6))
-			plt.plot(nfeatures_plot.nfeatures, nfeatures_plot.validation_accuracy,label='{} gram count vectorizer'.format(ngram_range),linestyle=':', color='royalblue')
-			plt.title("N-gram {} CountVectorizer test result : Accuracy".format(ngram_range))
+			plt.plot(nfeatures_plot.nfeatures, nfeatures_plot.Weighted_F1_Score,label='{} gram count vectorizer'.format(ngram_range),linestyle=':', color='royalblue')
+			plt.title("N-gram {} CountVectorizer test result : Weighted F1 Score".format(ngram_range))
 			plt.xlabel("Number of features")
-			plt.ylabel("Validation set accuracy")
+			plt.ylabel("Weighted F1-score")
 			plt.legend()
 			plt.show(block=True)
 		
-	def UseTFIDFVectorizer(self,n_features=np.arange(100,5000,100), ngram_range = [1,2,3], use_stop_words = True):
+	def UseTFIDFVectorizer(self,n_features=np.arange(1200,7100,100), ngram_range = [1,2,3], use_stop_words = True, min_df=1):
 		
 		if not use_stop_words:
 			stop_words=get_stop_words('..\data\stopwords.txt')
@@ -170,34 +178,34 @@ class Logistic_Regression:
 			print("WITH STOPWORD")
 		if type(ngram_range) == list:
 			print("RESULT FOR UNIGRAM TfidfVectorizer")
-			feature_result_ugt = self.nfeature_accuracy_checker(vectorizer=tvec, n_features=n_features, stop_words=stop_words)
+			feature_result_ugt = self.nfeature_accuracy_checker(vectorizer=tvec, n_features=n_features, stop_words=stop_words, min_df=min_df)
 			print("\nRESULT FOR BIGRAM TfidfVectorizer")
-			feature_result_bgt = self.nfeature_accuracy_checker(vectorizer=tvec, n_features=n_features, stop_words=stop_words, ngram_range=(1, 2))
+			feature_result_bgt = self.nfeature_accuracy_checker(vectorizer=tvec, n_features=n_features, stop_words=stop_words, ngram_range=(1, 2), min_df=min_df)
 			print("\nRESULT FOR TRIGRAM TfidfVectorizer")
-			feature_result_tgt = self.nfeature_accuracy_checker(vectorizer=tvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, 3))
+			feature_result_tgt = self.nfeature_accuracy_checker(vectorizer=tvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, 3), min_df=min_df)
 
-			nfeatures_plot_tgt = pd.DataFrame(feature_result_tgt,columns=['nfeatures','validation_accuracy','train_test_time'])
-			nfeatures_plot_bgt = pd.DataFrame(feature_result_bgt,columns=['nfeatures','validation_accuracy','train_test_time'])
-			nfeatures_plot_ugt = pd.DataFrame(feature_result_ugt,columns=['nfeatures','validation_accuracy','train_test_time'])
+			nfeatures_plot_tgt = pd.DataFrame(feature_result_tgt,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
+			nfeatures_plot_bgt = pd.DataFrame(feature_result_bgt,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
+			nfeatures_plot_ugt = pd.DataFrame(feature_result_ugt,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
 
 			plt.figure(figsize=(8,6))
-			plt.plot(nfeatures_plot_tgt.nfeatures, nfeatures_plot_tgt.validation_accuracy,label='trigram tfidf vectorizer',color='royalblue')
-			plt.plot(nfeatures_plot_bgt.nfeatures, nfeatures_plot_bgt.validation_accuracy,label='bigram tfidf vectorizer',color='orangered')
-			plt.plot(nfeatures_plot_ugt.nfeatures, nfeatures_plot_ugt.validation_accuracy, label='unigram tfidf vectorizer',color='gold')
-			plt.title("N-gram(1~3) TFIDF Vectorizer test result : Accuracy")
+			plt.plot(nfeatures_plot_tgt.nfeatures, nfeatures_plot_tgt.Weighted_F1_Score,label='trigram tfidf vectorizer',color='royalblue')
+			plt.plot(nfeatures_plot_bgt.nfeatures, nfeatures_plot_bgt.Weighted_F1_Score,label='bigram tfidf vectorizer',color='orangered')
+			plt.plot(nfeatures_plot_ugt.nfeatures, nfeatures_plot_ugt.Weighted_F1_Score, label='unigram tfidf vectorizer',color='gold')
+			plt.title("N-gram(1~3) TFIDF Vectorizer test result : Weighted F1 Score")
 			plt.xlabel("Number of features")
-			plt.ylabel("Validation set accuracy")
+			plt.ylabel("Weighted F1-score")
 			plt.legend()
 			plt.show(block=True)
 		else:
 			print("\nRESULT FOR {} GRAM TfidfVectorizer".format(ngram_range))
-			feature_result = self.nfeature_accuracy_checker(vectorizer=tvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, ngram_range))
-			nfeatures_plot = pd.DataFrame(feature_result,columns=['nfeatures','validation_accuracy','train_test_time'])
+			feature_result = self.nfeature_accuracy_checker(vectorizer=tvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, ngram_range), min_df=min_df)
+			nfeatures_plot = pd.DataFrame(feature_result,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
 			plt.figure(figsize=(8,6))
-			plt.plot(nfeatures_plot.nfeatures, nfeatures_plot.validation_accuracy,label='{} gram count vectorizer'.format(ngram_range), color='royalblue')
-			plt.title("N-gram {} TfidfVectorizer test result : Accuracy".format(ngram_range))
+			plt.plot(nfeatures_plot.nfeatures, nfeatures_plot.Weighted_F1_Score,label='{} gram count vectorizer'.format(ngram_range), color='royalblue')
+			plt.title("N-gram {} TfidfVectorizer test result : Weighted F1 Score".format(ngram_range))
 			plt.xlabel("Number of features")
-			plt.ylabel("Validation set accuracy")
+			plt.ylabel("Weighted F1-score")
 			plt.legend()
 			plt.show(block=True)
 	def ShowConfusionMatrix(self):
