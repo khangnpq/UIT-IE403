@@ -27,6 +27,7 @@ n_features = np.arange(1200,6100,100)
 cvec = CountVectorizer()
 tvec = TfidfVectorizer()
 lr = LogisticRegression(C=10,multi_class='multinomial', solver='newton-cg',max_iter= 250, class_weight= "balanced")
+#lr = LogisticRegression(multi_class='multinomial', solver='newton-cg',max_iter= 250)
 le = preprocessing.LabelEncoder()
 
 def get_stop_words(stop_file_path):

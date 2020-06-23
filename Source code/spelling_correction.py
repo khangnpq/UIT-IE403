@@ -51,10 +51,11 @@ def SpellingCorrection(*args):
 			one_word_list = unigram_sentence.split(" ")
 			two_word_list_1 = [' '.join(one_word_list[x]) for x in range(0, len(one_word_list),2)] #list of every 2 word starting from 1st word
 			bigram_sentence_1 = ChangeWord(unigram_sentence, two_word_list_1, rule_dict)
-			two_word_list_2 = [bigram_sentence_1.split()[0]]+[' '.join(bigram_sentence_1.split()[x]) for x in range(1, len(bigram_sentence_1.split()),2)] #list of every 2 word starting from 2nd word
-			bigram_sentence_2 = ChangeWord(bigram_sentence_1, two_word_list_2, rule_dict)
-			one_word_list = bigram_sentence_2.split(" ")
 			try:
+				two_word_list_2 = [bigram_sentence_1.split()[0]]+[' '.join(bigram_sentence_1.split()[x]) for x in range(1, len(bigram_sentence_1.split()),2)] #list of every 2 word starting from 2nd word
+				bigram_sentence_2 = ChangeWord(bigram_sentence_1, two_word_list_2, rule_dict)
+				one_word_list = bigram_sentence_2.split(" ")
+			
 				three_word_list_1 = [' '.join(one_word_list[x]) for x in range(0, len(one_word_list),3)]
 				trigram_sentence_1 = ChangeWord(bigram_sentence_2,three_word_list_1, rule_dict)
 				three_word_list_2 = [trigram_sentence_1.split()[0]]+[' '.join(trigram_sentence_1.split()[x]) for x in range(1, len(trigram_sentence_1.split()),3)] #list of every 2 word starting from 2nd word
