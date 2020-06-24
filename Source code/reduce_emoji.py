@@ -40,7 +40,7 @@ def ReduceEmoji(*args, keep_repeated_emoji = False):
 	#args = list(args)
 		
 	output = []
-	e_to_v_df = pd.read_excel("../data/Emoji_list_emo_3.xlsx", encoding="ISO-8859-1")	
+	e_to_v_df = pd.read_excel("../data/Emoji_to_VN.xlsx", encoding="ISO-8859-1")	
 	e_v_dict = dict(zip(e_to_v_df.Emojize, e_to_v_df.Translated))
 	file_path = '../data/emoticon-emoji.xlsx'
 	rule_dict = LoadRuleDict(file_path)
@@ -84,9 +84,9 @@ def ReduceEmoji(*args, keep_repeated_emoji = False):
 					word = e_v_dict[word]
 				word_list_1.append(word)
 			sentence = ' '.join(word_list_1)
-			sentence = ' '.join([w for w in sentence.split() if len(w)>=1 and w not in remove_list_1]) #Remove single character on the string
+			new_sentence = ' '.join([w for w in sentence.split() if len(w)>=1 and w not in remove_list_1]) #Remove single character on the string
 			#print(sentence)
-			sentence_list.append(sentence)
+			sentence_list.append(new_sentence)
 		new_df = df.copy()
 		new_df.Sentence = sentence_list	#replace Sentence column
 		output.append(new_df)

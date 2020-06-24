@@ -26,7 +26,7 @@ plt.style.use('fivethirtyeight')
 n_features = np.arange(1200,6100,100)
 cvec = CountVectorizer()
 tvec = TfidfVectorizer()
-lr = LogisticRegression(C=10,multi_class='multinomial', solver='newton-cg',max_iter= 250, class_weight= "balanced")
+lr = LogisticRegression(C=5,multi_class='multinomial', solver='newton-cg',max_iter= 250, class_weight= "balanced")
 #lr = LogisticRegression(multi_class='multinomial', solver='newton-cg',max_iter= 250)
 le = preprocessing.LabelEncoder()
 
@@ -90,7 +90,7 @@ class Logistic_Regression:
 				self.model.append(deepcopy(sentiment_fit))
 				self.accuracy.append(accuracy_dict)
 		train_valid_time = time() - t0
-		return weighted_f1_score_test, train_valid_time
+		return weighted_f1_score_valid, weighted_f1_score_test, train_valid_time
 		
 	def nfeature_accuracy_checker(self, vectorizer=cvec, n_features=n_features, stop_words=None, ngram_range=(1, 1), classifier=lr, min_df=1):
 		result = []	
@@ -104,14 +104,14 @@ class Logistic_Regression:
 				('vectorizer', vectorizer),
 				('classifier', classifier)
 			])
-			weighted_f1_score_test, tt_time = self.accuracy_summary(checker_pipeline, n_features)
+			weighted_f1_score_valid, weighted_f1_score_test, tt_time = self.accuracy_summary(checker_pipeline, n_features)
 			
 			print("Validation result for {} features".format(n_features))
 			print("Accuracy score on valid set: {0:.2f}%".format(self.accuracy[0]['valid']*100))
 			print("Weighted F1-score on valid set: {0:.2f}%".format(self.weighted_f1_score_valid*100))
 			print("Accuracy score on test set:: {0:.2f}%".format(self.accuracy[0]['test']*100))
 			print("Weighted F1-score on test set: {0:.2f}%".format(self.weighted_f1_score_test*100))
-			result.append((n_features, weighted_f1_score_test,tt_time))
+			result.append((n_features, weighted_f1_score_valid, weighted_f1_score_test,tt_time))
 		else:
 			for n in n_features:
 				vectorizer.set_params(min_df=min_df, stop_words=stop_words, max_features=n, ngram_range=ngram_range)
@@ -119,8 +119,8 @@ class Logistic_Regression:
 					('vectorizer', vectorizer),
 					('classifier', classifier)
 				])
-				weighted_f1_score_test, tt_time = self.accuracy_summary(checker_pipeline, n)
-				result.append((n, weighted_f1_score_test,tt_time))
+				weighted_f1_score_valid, weighted_f1_score_test, tt_time = self.accuracy_summary(checker_pipeline, n)
+				result.append((n, weighted_f1_score_valid, weighted_f1_score_test,tt_time))
 			print("Highest weighted f1-score on valid set: {0:.2f}%".format(self.weighted_f1_score_valid*100))
 			print("Highest weighted f1-score on test set with that model: {0:.2f}%".format(self.weighted_f1_score_test*100))
 			for accuracy_dict in self.accuracy:
@@ -144,14 +144,17 @@ class Logistic_Regression:
 			feature_result_bg = self.nfeature_accuracy_checker(vectorizer=cvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, 2), min_df=min_df)
 			print("\nRESULT FOR TRIGRAM CountVectorizer")
 			feature_result_tg = self.nfeature_accuracy_checker(vectorizer=cvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, 3), min_df=min_df)
-			nfeatures_plot_tg = pd.DataFrame(feature_result_tg,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
-			nfeatures_plot_bg = pd.DataFrame(feature_result_bg,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
-			nfeatures_plot_ug = pd.DataFrame(feature_result_ug,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
+			nfeatures_plot_tg = pd.DataFrame(feature_result_tg,columns=['nfeatures','Weighted_F1_Score_Valid', 'Weighted_F1_Score_Test', 'train_test_time'])
+			nfeatures_plot_bg = pd.DataFrame(feature_result_bg,columns=['nfeatures','Weighted_F1_Score_Valid', 'Weighted_F1_Score_Test', 'train_test_time'])
+			nfeatures_plot_ug = pd.DataFrame(feature_result_ug,columns=['nfeatures','Weighted_F1_Score_Valid', 'Weighted_F1_Score_Test', 'train_test_time'])
 
 			plt.figure(figsize=(8,6))
-			plt.plot(nfeatures_plot_tg.nfeatures, nfeatures_plot_tg.Weighted_F1_Score,label='trigram count vectorizer',linestyle=':', color='royalblue')
-			plt.plot(nfeatures_plot_bg.nfeatures, nfeatures_plot_bg.Weighted_F1_Score,label='bigram count vectorizer',linestyle=':',color='orangered')
-			plt.plot(nfeatures_plot_ug.nfeatures, nfeatures_plot_ug.Weighted_F1_Score, label='unigram count vectorizer',linestyle=':',color='gold')
+			plt.plot(nfeatures_plot_tg.nfeatures, nfeatures_plot_tg.Weighted_F1_Score_Valid,label='Trigram Cvec Weighted-F1 Valid', color='royalblue')
+			plt.plot(nfeatures_plot_bg.nfeatures, nfeatures_plot_bg.Weighted_F1_Score_Valid,label='Bigram Cvec Weighted-F1 Valid',color='orangered')
+			plt.plot(nfeatures_plot_ug.nfeatures, nfeatures_plot_ug.Weighted_F1_Score_Valid, label='Unigram Cvec Weighted-F1 Valid',color='gold')
+			plt.plot(nfeatures_plot_tg.nfeatures, nfeatures_plot_tg.Weighted_F1_Score_Test,label='Trigram Cvec Weighted-F1 Test',linestyle=':', color='royalblue')
+			plt.plot(nfeatures_plot_bg.nfeatures, nfeatures_plot_bg.Weighted_F1_Score_Test,label='Bigram Cvec Weighted-F1 Test',linestyle=':',color='orangered')
+			plt.plot(nfeatures_plot_ug.nfeatures, nfeatures_plot_ug.Weighted_F1_Score_Test, label='Unigram Cvec Weighted-F1 Test',linestyle=':',color='gold')
 			plt.title("N-gram(1~3) CountVectorizer test result : Weighted F1 Score")
 			plt.xlabel("Number of features")
 			plt.ylabel("Weighted F1-score")
@@ -160,9 +163,10 @@ class Logistic_Regression:
 		else:
 			print("\nRESULT FOR {} GRAM CountVectorizer".format(ngram_range))
 			feature_result = self.nfeature_accuracy_checker(vectorizer=cvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, ngram_range), min_df=min_df)
-			nfeatures_plot = pd.DataFrame(feature_result,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
+			nfeatures_plot = pd.DataFrame(feature_result,columns=['nfeatures','Weighted_F1_Score_Valid', 'Weighted_F1_Score_Test','train_test_time'])
 			plt.figure(figsize=(8,6))
-			plt.plot(nfeatures_plot.nfeatures, nfeatures_plot.Weighted_F1_Score,label='{} gram count vectorizer'.format(ngram_range),linestyle=':', color='royalblue')
+			plt.plot(nfeatures_plot.nfeatures, nfeatures_plot.Weighted_F1_Score_Valid,label='{} gram Cvec Weighted-F1 Valid'.format(ngram_range), color='royalblue')
+			plt.plot(nfeatures_plot.nfeatures, nfeatures_plot.Weighted_F1_Score_Test,label='{} gram Cvec Weighted-F1 Test'.format(ngram_range),linestyle=':', color='royalblue')
 			plt.title("N-gram {} CountVectorizer test result : Weighted F1 Score".format(ngram_range))
 			plt.xlabel("Number of features")
 			plt.ylabel("Weighted F1-score")
@@ -184,15 +188,20 @@ class Logistic_Regression:
 			feature_result_bgt = self.nfeature_accuracy_checker(vectorizer=tvec, n_features=n_features, stop_words=stop_words, ngram_range=(1, 2), min_df=min_df)
 			print("\nRESULT FOR TRIGRAM TfidfVectorizer")
 			feature_result_tgt = self.nfeature_accuracy_checker(vectorizer=tvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, 3), min_df=min_df)
-
-			nfeatures_plot_tgt = pd.DataFrame(feature_result_tgt,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
-			nfeatures_plot_bgt = pd.DataFrame(feature_result_bgt,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
-			nfeatures_plot_ugt = pd.DataFrame(feature_result_ugt,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
+			
+			nfeatures_plot_tgt = pd.DataFrame(feature_result_tgt,columns=['nfeatures','Weighted_F1_Score_Valid', 'Weighted_F1_Score_Test','train_test_time'])
+			nfeatures_plot_bgt = pd.DataFrame(feature_result_bgt,columns=['nfeatures','Weighted_F1_Score_Valid', 'Weighted_F1_Score_Test','train_test_time'])
+			nfeatures_plot_ugt = pd.DataFrame(feature_result_ugt,columns=['nfeatures','Weighted_F1_Score_Valid', 'Weighted_F1_Score_Test','train_test_time'])
 
 			plt.figure(figsize=(8,6))
-			plt.plot(nfeatures_plot_tgt.nfeatures, nfeatures_plot_tgt.Weighted_F1_Score,label='trigram tfidf vectorizer',color='royalblue')
-			plt.plot(nfeatures_plot_bgt.nfeatures, nfeatures_plot_bgt.Weighted_F1_Score,label='bigram tfidf vectorizer',color='orangered')
-			plt.plot(nfeatures_plot_ugt.nfeatures, nfeatures_plot_ugt.Weighted_F1_Score, label='unigram tfidf vectorizer',color='gold')
+			
+			plt.plot(nfeatures_plot_tgt.nfeatures, nfeatures_plot_tgt.Weighted_F1_Score_Valid,label='Trigram TVec Weighted-F1 Valid', color='royalblue')
+			plt.plot(nfeatures_plot_bgt.nfeatures, nfeatures_plot_bgt.Weighted_F1_Score_Valid,label='Bigram TVec Weighted-F1 Valid',color='orangered')
+			plt.plot(nfeatures_plot_ugt.nfeatures, nfeatures_plot_ugt.Weighted_F1_Score_Valid, label='Unigram TVec Weighted-F1 Valid',color='gold')
+			plt.plot(nfeatures_plot_tgt.nfeatures, nfeatures_plot_tgt.Weighted_F1_Score_Test,label='Trigram TVec Weighted-F1 Test',linestyle=':', color='royalblue')
+			plt.plot(nfeatures_plot_bgt.nfeatures, nfeatures_plot_bgt.Weighted_F1_Score_Test,label='Bigram TVec Weighted-F1 Test',linestyle=':',color='orangered')
+			plt.plot(nfeatures_plot_ugt.nfeatures, nfeatures_plot_ugt.Weighted_F1_Score_Test, label='Unigram Tvec Weighted-F1 Test',linestyle=':',color='gold')
+			
 			plt.title("N-gram(1~3) TFIDF Vectorizer test result : Weighted F1 Score")
 			plt.xlabel("Number of features")
 			plt.ylabel("Weighted F1-score")
@@ -201,9 +210,10 @@ class Logistic_Regression:
 		else:
 			print("\nRESULT FOR {} GRAM TfidfVectorizer".format(ngram_range))
 			feature_result = self.nfeature_accuracy_checker(vectorizer=tvec,n_features=n_features, stop_words=stop_words, ngram_range=(1, ngram_range), min_df=min_df)
-			nfeatures_plot = pd.DataFrame(feature_result,columns=['nfeatures','Weighted_F1_Score','train_test_time'])
+			nfeatures_plot = pd.DataFrame(feature_result,columns=['nfeatures','Weighted_F1_Score_Valid', 'Weighted_F1_Score_Test', 'train_test_time'])
 			plt.figure(figsize=(8,6))
-			plt.plot(nfeatures_plot.nfeatures, nfeatures_plot.Weighted_F1_Score,label='{} gram count vectorizer'.format(ngram_range), color='royalblue')
+			plt.plot(nfeatures_plot.nfeatures, nfeatures_plot.Weighted_F1_Score_Valid,label='{} gram TVec Weighted-F1 Valid'.format(ngram_range), color='royalblue')
+			plt.plot(nfeatures_plot.nfeatures, nfeatures_plot.Weighted_F1_Score_Test,label='{} gram TVec Weighted-F1 Test'.format(ngram_range), linestyle=':', color='royalblue')
 			plt.title("N-gram {} TfidfVectorizer test result : Weighted F1 Score".format(ngram_range))
 			plt.xlabel("Number of features")
 			plt.ylabel("Weighted F1-score")
